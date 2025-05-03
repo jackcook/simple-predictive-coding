@@ -55,16 +55,10 @@ def get_dataloaders(
         num_classes = 10
     elif dataset_id == "mnist":
         train_loader = DataLoader(
-            get_mnist_dataset(train=True),
-            batch_size=batch_size,
-            shuffle=True,
-            pin_memory=True,
+            get_mnist_dataset(train=True), batch_size=batch_size, shuffle=True
         )
         test_loader = DataLoader(
-            get_mnist_dataset(train=False),
-            batch_size=batch_size,
-            shuffle=False,
-            pin_memory=True,
+            get_mnist_dataset(train=False), batch_size=batch_size, shuffle=False
         )
         num_classes = 10
     else:
