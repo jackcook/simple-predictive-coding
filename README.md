@@ -1,6 +1,6 @@
 # Simple Predictive Coding
 
-This repository contains a relatively simple implementation of [predictive coding](https://en.wikipedia.org/wiki/Predictive_coding), a learning algorithm that, unlike [backpropagation](https://en.wikipedia.org/wiki/Backpropagation), is biologically plausible.
+This repository contains a relatively simple implementation of [predictive coding](https://en.wikipedia.org/wiki/Predictive_coding), a learning algorithm that—unlike [backpropagation](https://en.wikipedia.org/wiki/Backpropagation)—is biologically plausible.
 You should not use this repository to train large models: use [PCX](https://github.com/liukidar/pcx), a JAX-based predictive coding framework, instead.
 You should use this repository if you want to learn about how predictive coding works.
 
