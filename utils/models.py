@@ -2,10 +2,11 @@ from typing import Literal
 import torch.nn as nn
 
 
-MLPLayer = lambda input_size, output_size: nn.Sequential(
-    nn.Linear(input_size, output_size),
-    nn.LeakyReLU(),
-)
+def MLPLayer(input_size: int, output_size: int) -> nn.Module:
+    return nn.Sequential(
+        nn.Linear(input_size, output_size),
+        nn.LeakyReLU(),
+    )
 
 
 class MLP(nn.Module):
