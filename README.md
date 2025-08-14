@@ -9,7 +9,7 @@ The core implementation is in lines 54-132, but most of this is comments: there 
 Feel free to read it, run some experiments, and write an issue or send me an email if you think anything is unclear!
 
 **NEW:** `eo.py` contains a heavily commented implementation of [error optimization](https://arxiv.org/abs/2505.20137), a new reparameterization of predictive coding that is much more efficient for training deep networks.
-The core implementation is in lines 55-143, but again, most of this is comments: there are only 50 lines of code.
+The core implementation is in lines 55-149, but again, most of this is comments: there are only 54 lines of code.
 
 ## Setup
 

@@ -130,15 +130,21 @@ def train(
             loss = torch.tensor(0.0, device=device)
 
             s_i = x
-            for e_i, layer_i in zip(errors, model.layers[:-1], strict=True):
-                s_i_pred = layer_i(s_i)
-                s_i = (e_i + s_i_pred).detach()
-                loss += 0.5 * torch.sum((s_i_pred - s_i) ** 2)
+            for i in range(len(model.layers)):
+                s_i_pred = model.layers[i](s_i)
 
-            # Again, add the mean squared error of the output layer's prediction error.
-            y_pred = model.layers[-1](s_i)
-            loss += 0.5 * torch.sum((y_pred - y_true) ** 2)
-            loss.backward()
+                if i == len(model.layers) - 1:
+                    # For the last layer, compare the prediction with the true label.
+                    loss_i = 0.5 * torch.sum((s_i_pred - y_true) ** 2)
+                else:
+                    s_i = (errors[i] + s_i_pred).detach()
+                    loss_i = 0.5 * torch.sum((s_i_pred - s_i) ** 2)
+
+                if i not in learnable_layer_indices:
+                    continue
+
+                loss_i.backward(inputs=model.layers[i].parameters())
+                loss += loss_i
 
             parameters_optimizer.step()
 
