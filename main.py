@@ -23,10 +23,11 @@ def train(
     num_epochs: int,
     num_relaxation_steps: int,
     weights_learning_rate: float,
-):
-    from tqdm import tqdm
+) -> None:
     import torch
-    import torch.nn as nn
+    from torch import nn
+    from tqdm import tqdm
+
     from utils import get_dataloaders, get_model
 
     if device == "auto":
@@ -42,23 +43,24 @@ def train(
     # Keep track of the layers that have learnable parameters. Layers without learnable
     # parameters, such as Flatten or ReLU, can't be optimized, so we will skip them in
     # some later steps.
-    learnable_layer_indices = set(
+    learnable_layer_indices = {
         i
         for i, layer in enumerate(model.layers)
         if any(p.requires_grad for p in layer.parameters())
-    )
+    }
 
     # Two optimizers are used in predictive coding: This first one optimizes the model
     # parameters, while the second one optimizes the model activations.
     parameters_optimizer = torch.optim.AdamW(
-        model.parameters(), lr=weights_learning_rate
+        model.parameters(),
+        lr=weights_learning_rate,
     )
 
     for epoch in range(num_epochs):
         print(f"Starting epoch {epoch + 1}/{num_epochs}")
 
         for x, y in tqdm(train_loader):
-            x, y = x.to(device), y.to(device)
+            x, y = x.to(device), y.to(device)  # noqa: PLW2901
 
             # Disable gradient computation for the model parameters: they're not needed
             # in the first step of predictive coding.
@@ -85,7 +87,8 @@ def train(
             # parameter: only the intermediate activations are optimized here, not the
             # input, output, or any model parameters.
             activations_optimizer = torch.optim.SGD(
-                activations[1:-1], lr=activations_learning_rate
+                activations[1:-1],
+                lr=activations_learning_rate,
             )
 
             # Perform several relaxation steps, through which we try to minimize each
@@ -99,7 +102,7 @@ def train(
                 # are kept constant.
                 loss = sum(
                     torch.sum(
-                        (activations[i + 1] - model.layers[i](activations[i])) ** 2
+                        (activations[i + 1] - model.layers[i](activations[i])) ** 2,
                     )
                     for i in range(1, len(activations) - 1)
                     if i in learnable_layer_indices
@@ -132,7 +135,7 @@ def train(
         test_acc = []
 
         for x, y in test_loader:
-            x, y = x.to(device), y.to(device)
+            x, y = x.to(device), y.to(device)  # noqa: PLW2901
             activations = model(x)
             y_pred = activations[-1]
             acc = (y_pred.argmax(dim=-1) == y).float().mean()

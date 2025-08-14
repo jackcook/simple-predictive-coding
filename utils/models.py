@@ -1,8 +1,10 @@
 from typing import Literal
-import torch.nn as nn
+
+import torch
+from torch import nn
 
 
-def MLPLayer(input_size: int, output_size: int) -> nn.Module:
+def MLPLayer(input_size: int, output_size: int) -> nn.Module:  # noqa: N802
     return nn.Sequential(
         nn.Linear(input_size, output_size),
         nn.LeakyReLU(),
@@ -10,13 +12,15 @@ def MLPLayer(input_size: int, output_size: int) -> nn.Module:
 
 
 class MLP(nn.Module):
+    """A multi-layer perceptron."""
+
     def __init__(
         self,
         in_features: int = 28 * 28,
         num_classes: int = 10,
         channel_sizes: list[int] = [128, 128],
-    ):
-        super(MLP, self).__init__()
+    ) -> None:
+        super().__init__()
         self.layers = nn.ModuleList(
             [
                 *[
@@ -27,10 +31,10 @@ class MLP(nn.Module):
                     for i in range(len(channel_sizes))
                 ],
                 MLPLayer(channel_sizes[-1], num_classes),
-            ]
+            ],
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> list[torch.Tensor]:
         activations = [x]
 
         for layer in self.layers:
@@ -41,6 +45,8 @@ class MLP(nn.Module):
 
 
 class VGG5(nn.Module):
+    """A VGG-5 convolutional neural network."""
+
     # Default parameters taken from Table 5 of https://arxiv.org/pdf/2407.01163
     def __init__(
         self,
@@ -53,8 +59,8 @@ class VGG5(nn.Module):
         pool_window_size: int = 2,
         pool_stride: int = 2,
         hidden_size: int = 256,
-    ):
-        super(VGG5, self).__init__()
+    ) -> None:
+        super().__init__()
         self.layers = nn.ModuleList(
             [
                 *[
@@ -78,10 +84,10 @@ class VGG5(nn.Module):
                     nn.ReLU(),
                     nn.Linear(hidden_size, num_classes),
                 ),
-            ]
+            ],
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> list[torch.Tensor]:
         activations = [x]
 
         for layer in self.layers:
@@ -94,7 +100,6 @@ class VGG5(nn.Module):
 def get_model(model_id: Literal["mlp", "vgg5"]) -> nn.Module:
     if model_id == "mlp":
         return MLP()
-    elif model_id == "vgg5":
+    if model_id == "vgg5":
         return VGG5()
-    else:
-        raise ValueError(f"Invalid model ID: {model_id}")
+    raise ValueError(f"Invalid model ID: {model_id}")

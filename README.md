@@ -5,11 +5,11 @@ You should not use this repository to train large models: use [PCX](https://gith
 You should use this repository if you want to learn about how predictive coding works.
 
 `main.py` contains a heavily commented predictive coding implementation.
-The core implementation is in lines 53-129, but most of this is comments: there are only 39 lines of code.
+The core implementation is in lines 54-132, but most of this is comments: there are only 41 lines of code.
 Feel free to read it, run some experiments, and write an issue or send me an email if you think anything is unclear!
 
 **NEW:** `eo.py` contains a heavily commented implementation of [error optimization](https://arxiv.org/abs/2505.20137), a new reparameterization of predictive coding that is much more efficient for training deep networks.
-The core implementation is in lines 54-140, but again, most of this is comments, and there are only 48 lines of code.
+The core implementation is in lines 55-143, but again, most of this is comments: there are only 50 lines of code.
 
 ## Setup
 
@@ -31,7 +31,7 @@ Train a VGG-5 model on CIFAR10:
 python main.py --model vgg5 --dataset cifar10
 ```
 
-Train the same model using error optimization:
+Train the same model using [error optimization](https://arxiv.org/abs/2505.20137):
 
 ```bash
 python eo.py --model vgg5 --dataset cifar10

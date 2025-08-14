@@ -1,9 +1,10 @@
-from typing import Literal, Tuple
+from typing import Literal
+
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 
-def get_cifar10_dataset(train: bool) -> datasets.CIFAR10:
+def get_cifar10_dataset(*, train: bool) -> datasets.CIFAR10:
     return datasets.CIFAR10(
         root=".",
         train=train,
@@ -20,14 +21,15 @@ def get_cifar10_dataset(train: bool) -> datasets.CIFAR10:
                 ),
                 transforms.ToTensor(),
                 transforms.Normalize(
-                    (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
+                    (0.4914, 0.4822, 0.4465),
+                    (0.2023, 0.1994, 0.2010),
                 ),
-            ]
+            ],
         ),
     )
 
 
-def get_mnist_dataset(train: bool) -> datasets.MNIST:
+def get_mnist_dataset(*, train: bool) -> datasets.MNIST:
     return datasets.MNIST(
         root=".",
         train=train,
@@ -37,28 +39,37 @@ def get_mnist_dataset(train: bool) -> datasets.MNIST:
                 transforms.ToTensor(),
                 transforms.Normalize((0.5,), (0.5,)),
                 transforms.Lambda(lambda x: x.flatten()),
-            ]
+            ],
         ),
     )
 
 
 def get_dataloaders(
-    dataset_id: Literal["cifar10", "mnist"], batch_size: int = 128
-) -> Tuple[DataLoader, DataLoader, int]:
+    dataset_id: Literal["cifar10", "mnist"],
+    batch_size: int = 128,
+) -> tuple[DataLoader, DataLoader, int]:
     if dataset_id == "cifar10":
         train_loader = DataLoader(
-            get_cifar10_dataset(train=True), batch_size=batch_size, shuffle=True
+            get_cifar10_dataset(train=True),
+            batch_size=batch_size,
+            shuffle=True,
         )
         test_loader = DataLoader(
-            get_cifar10_dataset(train=False), batch_size=batch_size, shuffle=False
+            get_cifar10_dataset(train=False),
+            batch_size=batch_size,
+            shuffle=False,
         )
         num_classes = 10
     elif dataset_id == "mnist":
         train_loader = DataLoader(
-            get_mnist_dataset(train=True), batch_size=batch_size, shuffle=True
+            get_mnist_dataset(train=True),
+            batch_size=batch_size,
+            shuffle=True,
         )
         test_loader = DataLoader(
-            get_mnist_dataset(train=False), batch_size=batch_size, shuffle=False
+            get_mnist_dataset(train=False),
+            batch_size=batch_size,
+            shuffle=False,
         )
         num_classes = 10
     else:
