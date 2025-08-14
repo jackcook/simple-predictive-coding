@@ -5,7 +5,7 @@ You should not use this repository to train large models: use [PCX](https://gith
 You should use this repository if you want to learn about how predictive coding works.
 
 `main.py` contains a heavily commented predictive coding implementation.
-The core implementation is in lines 49-125, but most of this is comments: there are only 39 lines of code.
+The core implementation is in lines 53-129, but most of this is comments: there are only 39 lines of code.
 Feel free to read it, run some experiments, and write an issue or send me an email if you think anything is unclear!
 
 ## Setup

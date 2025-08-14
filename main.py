@@ -30,7 +30,11 @@ def train(
     from utils import get_dataloaders, get_model
 
     if device == "auto":
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        device = (
+            "cuda"
+            if torch.cuda.is_available()
+            else ("mps" if torch.mps.is_available() else "cpu")
+        )
 
     train_loader, test_loader, num_classes = get_dataloaders(dataset, batch_size)
     model = get_model(model).to(device)
