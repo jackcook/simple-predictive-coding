@@ -2,7 +2,6 @@ import click
 
 
 @click.command()
-@click.option("--activations-learning-rate", type=float, default=1e-2)
 @click.option("--batch-size", type=int, default=128)
 @click.option("--dataset", type=click.Choice(["mnist", "cifar10"]), required=True)
 @click.option(
@@ -10,15 +9,16 @@ import click
     type=click.Choice(["cpu", "cuda", "mps", "auto"]),
     default="auto",
 )
+@click.option("--errors-learning-rate", type=float, default=1e-3)
 @click.option("--model", type=click.Choice(["mlp", "vgg5"]), required=True)
 @click.option("--num-epochs", type=int, default=10)
 @click.option("--num-relaxation-steps", type=int, default=8)
-@click.option("--weights-learning-rate", type=float, default=1e-5)
+@click.option("--weights-learning-rate", type=float, default=5e-4)
 def train(
-    activations_learning_rate: float,
     batch_size: int,
     dataset: str,
     device: str,
+    errors_learning_rate: float,
     model: str,
     num_epochs: int,
     num_relaxation_steps: int,
@@ -49,8 +49,9 @@ def train(
     )
 
     # Two optimizers are used in predictive coding: This first one optimizes the model
-    # parameters, while the second one optimizes the model activations.
-    parameters_optimizer = torch.optim.AdamW(
+    # parameters, while the second one optimizes the model activations. Note that Adam,
+    # not AdamW, is typically used for optimizing parameters in error optimization.
+    parameters_optimizer = torch.optim.Adam(
         model.parameters(), lr=weights_learning_rate
     )
 
@@ -66,50 +67,53 @@ def train(
                 var.detach_()
 
             activations = model(x)
+            y_pred = activations[-1]
+            y_true = nn.functional.one_hot(y, num_classes).float()
 
-            # In predictive coding, the first activation is fixed to the input, and the
-            # last activation is fixed to the correct output. We can then optimize the
-            # activations of the layers in between by reducing each layer's prediction
-            # error.
-            activations[-1] = nn.functional.one_hot(y, num_classes).float()
+            # In error optimization, prediction errors are updated during relaxation
+            # rather than activations. We initialize them to zero here, and we will
+            # optimize them in a moment. Note that we don't optimize the prediction
+            # error of the output layer: this is handled separately below.
+            errors = [
+                torch.zeros_like(
+                    activations[layer_i + 1],
+                    requires_grad=layer_i in learnable_layer_indices,
+                )
+                for layer_i in range(len(model.layers) - 1)
+            ]
 
-            for i in range(len(model.layers)):
-                if i not in learnable_layer_indices:
-                    continue
-
-                # Set requires_grad to True so that gradients are computed for each
-                # activation tensor.
-                activations[i].requires_grad_()
-
-            # This optimizer optimizes the activations of each layer. Note the first
-            # parameter: only the intermediate activations are optimized here, not the
-            # input, output, or any model parameters.
-            activations_optimizer = torch.optim.SGD(
-                activations[1:-1], lr=activations_learning_rate
+            # This optimizer optimizes each layer's prediction error.
+            errors_optimizer = torch.optim.SGD(
+                [e for e in errors if e.requires_grad], lr=errors_learning_rate
             )
 
             # Perform several relaxation steps, through which we try to minimize each
-            # layer's prediction error by finding better activations.
+            # layer's prediction error. Remember that the model parameters are kept
+            # constant during this process.
             for _ in range(num_relaxation_steps):
-                activations_optimizer.zero_grad()
+                errors_optimizer.zero_grad()
 
                 # Compute the mean squared error of each layer's prediction error.
-                # Remember that activations_optimizer is updating the activations, so
-                # each activation tensor changes in each step, but the model parameters
-                # are kept constant.
-                loss = sum(
-                    torch.sum(
-                        (activations[i + 1] - model.layers[i](activations[i])) ** 2
-                    )
-                    for i in range(1, len(activations) - 1)
-                    if i in learnable_layer_indices
+                loss = 0.5 * sum(
+                    torch.sum(errors[i] ** 2)
+                    for i in range(len(errors))
+                    if errors[i].requires_grad
                 )
+
+                # Perform a forward pass through the model, using the current
+                # prediction errors.
+                s_i = x
+                for e_i, layer_i in zip(errors + [0.0], model.layers, strict=True):
+                    s_i = e_i + layer_i(s_i)
+
+                # Add the mean squared error of the output layer's prediction error.
+                loss += 0.5 * torch.sum((s_i - y_true) ** 2)
                 loss.backward()
 
-                activations_optimizer.step()
+                errors_optimizer.step()
 
-            # After the relaxation steps, use the new optimized activations to optimize
-            # the model parameters.
+            # After the relaxation steps, use the new optimized prediction errors to
+            # update the model parameters.
             parameters_optimizer.zero_grad()
 
             # Enable gradient computation for the model parameters, reversing the
@@ -117,13 +121,20 @@ def train(
             for var in model.parameters():
                 var.requires_grad_()
 
-            # Compute the exact same mean squared error loss as before, but now
-            # optimize the model parameters while keeping the activations constant.
-            loss = sum(
-                torch.sum((activations[i + 1] - model.layers[i](activations[i])) ** 2)
-                for i in range(len(model.layers))
-                if i in learnable_layer_indices
-            )
+            # Do another forward pass through the model using the optimized prediction
+            # errors, but now optimize the model parameters while keeping the
+            # prediction errors constant.
+            loss = torch.tensor(0.0, device=device)
+
+            s_i = x
+            for e_i, layer_i in zip(errors, model.layers[:-1], strict=True):
+                s_i_pred = layer_i(s_i)
+                s_i = (e_i + s_i_pred).detach()
+                loss += 0.5 * torch.sum((s_i_pred - s_i) ** 2)
+
+            # Again, add the mean squared error of the output layer's prediction error.
+            y_pred = model.layers[-1](s_i)
+            loss += 0.5 * torch.sum((y_pred - y_true) ** 2)
             loss.backward()
 
             parameters_optimizer.step()
@@ -133,8 +144,7 @@ def train(
 
         for x, y in test_loader:
             x, y = x.to(device), y.to(device)
-            activations = model(x)
-            y_pred = activations[-1]
+            y_pred = model(x)[-1]
             acc = (y_pred.argmax(dim=-1) == y).float().mean()
             test_acc.append(acc)
 
